@@ -3,7 +3,7 @@
 Unicode algorithms for Lean 4 that are too large or too specialized to live in
 [UnicodeBasic](https://github.com/fgdorais/lean4-unicode-basic).
 
-## The `lean4-unicode-*` family
+## The Lean4 / Unicode family
 
 This library is one of a small family of Lean 4 Unicode libraries. Each one has a narrow job, so
 you only depend on what you need.
