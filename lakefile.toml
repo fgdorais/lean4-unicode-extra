@@ -1,5 +1,4 @@
 name = "UnicodeExtra"
-version = "0.1.0"
 description = "Unicode algorithms for Lean 4"
 keywords = ["unicode"]
 precompileModules = true
