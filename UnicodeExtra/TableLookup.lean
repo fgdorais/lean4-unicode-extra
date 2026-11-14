@@ -68,7 +68,7 @@ where
 public def lookupGraphemeClusterBreak (c : UInt32) : GraphemeClusterBreak :=
   if Hangul.Syllable.base ≤ c && c ≤ Hangul.Syllable.last then
     -- Hangul syllables are not in the table
-    if (c - Hangul.Syllable.base) % Hangul.sizeT.toUInt32 == 0 then .lv else .lvt
+    if (c - Hangul.Syllable.base) % Hangul.sizeT.toUInt32 == 0 then .syllableLV else .syllableLVT
   else
     let table := table.get
     if c < table[0]!.1 then .other else

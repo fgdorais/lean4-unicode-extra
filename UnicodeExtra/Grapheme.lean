@@ -99,11 +99,11 @@ public def State.isBreak (st : State) (cur : Props) : Bool :=
   | .cr, _ | .lf, _ | .control, _ => true
   | _, .cr | _, .lf | _, .control => true
   -- GB6: L × (L | V | LV | LVT)
-  | .l, .l | .l, .v | .l, .lv | .l, .lvt => false
+  | .jamoL, .jamoL | .jamoL, .jamoV | .jamoL, .syllableLV | .jamoL, .syllableLVT => false
   -- GB7: (LV | V) × (V | T)
-  | .lv, .v | .lv, .t | .v, .v | .v, .t => false
+  | .syllableLV, .jamoV | .syllableLV, .jamoT | .jamoV, .jamoV | .jamoV, .jamoT => false
   -- GB8: (LVT | T) × T
-  | .lvt, .t | .t, .t => false
+  | .syllableLVT, .jamoT | .jamoT, .jamoT => false
   -- GB9, GB9a: × (Extend | ZWJ | SpacingMark)
   | _, .extend | _, .zwj | _, .spacingMark => false
   -- GB9b: Prepend ×

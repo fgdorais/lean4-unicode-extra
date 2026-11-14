@@ -28,7 +28,7 @@ open Unicode
 #guard (splitGraphemeCluster? "e\u0301x".toSlice).map (fun (a, b) => (a.toString, b.toString)) == some ("e\u0301", "x")
 
 #guard getGraphemeClusterBreak 'a' == .other
-#guard getGraphemeClusterBreak '\uAC00' == .lv
-#guard getGraphemeClusterBreak '\uAC01' == .lvt
+#guard getGraphemeClusterBreak '\uAC00' == .syllableLV
+#guard getGraphemeClusterBreak '\uAC01' == .syllableLVT
 #guard isExtendedPictographic '😀'
 #guard getIndicConjunctBreak '\u094D' == .linker

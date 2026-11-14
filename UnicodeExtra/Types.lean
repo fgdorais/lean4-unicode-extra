@@ -31,15 +31,15 @@ public inductive GraphemeClusterBreak where
   /-- Spacing marks that extend a grapheme cluster (`SM`) -/
   | spacingMark
   /-- Hangul leading consonant jamo (`L`) -/
-  | l
+  | jamoL
   /-- Hangul vowel jamo (`V`) -/
-  | v
+  | jamoV
   /-- Hangul trailing consonant jamo (`T`) -/
-  | t
+  | jamoT
   /-- Hangul LV syllable (`LV`) -/
-  | lv
+  | syllableLV
   /-- Hangul LVT syllable (`LVT`) -/
-  | lvt
+  | syllableLVT
   deriving Inhabited, DecidableEq, Repr
 
 /-- Indic conjunct break property value
@@ -67,11 +67,11 @@ public def GraphemeClusterBreak.toAbbrev : GraphemeClusterBreak → String
   | .regionalIndicator => "RI"
   | .prepend => "PP"
   | .spacingMark => "SM"
-  | .l => "L"
-  | .v => "V"
-  | .t => "T"
-  | .lv => "LV"
-  | .lvt => "LVT"
+  | .jamoL => "L"
+  | .jamoV => "V"
+  | .jamoT => "T"
+  | .syllableLV => "LV"
+  | .syllableLVT => "LVT"
 
 /-- Get a grapheme cluster break value from its short alias -/
 public def GraphemeClusterBreak.ofAbbrev? (abbr : String.Slice) : Option GraphemeClusterBreak :=
@@ -85,11 +85,11 @@ public def GraphemeClusterBreak.ofAbbrev? (abbr : String.Slice) : Option Graphem
   | "RI" => some .regionalIndicator
   | "PP" => some .prepend
   | "SM" => some .spacingMark
-  | "L" => some .l
-  | "V" => some .v
-  | "T" => some .t
-  | "LV" => some .lv
-  | "LVT" => some .lvt
+  | "L" => some .jamoL
+  | "V" => some .jamoV
+  | "T" => some .jamoT
+  | "LV" => some .syllableLV
+  | "LVT" => some .syllableLVT
   | _ => none
 
 @[inherit_doc GraphemeClusterBreak.ofAbbrev?]
