@@ -77,10 +77,9 @@ private def isFinalSigma (s : String.Slice) (p : s.Pos) (h : p ≠ s.endPos) : B
   before && !after
 where
   -- Some characters are both cased and case-ignorable, such as U+0345 COMBINING GREEK
-  -- YPOGEGRAMMENI and modifier letters such as U+02B0. The Standard's regular expressions for
-  -- Final_Sigma are ambiguous for these: matched with backtracking, such a character can count as
-  -- the cased character. Like ICU and CPython, we skip every case-ignorable character first and
-  -- only then look for a cased one, so these characters never count as cased here.
+  -- YPOGEGRAMMENI and modifier letters such as U+02B0. The Standard makes the `*` in the
+  -- Final_Sigma regular expressions possessive, with no backup, so these characters are always
+  -- skipped as case-ignorable and never count as the cased character. ICU does the same.
   /-- Preceded by a cased character and then zero or more case-ignorable characters. -/
   before := Id.run do
     for c in (s.sliceTo p).revChars do

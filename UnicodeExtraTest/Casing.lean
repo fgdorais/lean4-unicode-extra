@@ -28,9 +28,10 @@ open Unicode
 #guard toLowercase "\u0391\u03A3'\u0391".toSlice == "\u03B1\u03C3'\u03B1"
 #guard toLowercase "\u0391\u03A3\u00AD".toSlice == "\u03B1\u03C2\u00AD"
 -- U+0345 COMBINING GREEK YPOGEGRAMMENI and U+02B0 MODIFIER LETTER SMALL H are both cased and
--- case-ignorable; like ICU, they are skipped as case-ignorable, never counted as cased
+-- case-ignorable; they are skipped as case-ignorable, never counted as cased
 #guard toLowercase "\u0345\u03A3".toSlice == "\u0345\u03C3"
 #guard toLowercase "\u0391\u03A3\u0345".toSlice == "\u03B1\u03C2\u0345"
+#guard toLowercase "\u0391\u03A3\u0345\u0391".toSlice == "\u03B1\u03C3\u0345\u03B1"
 #guard toLowercase "\u0391\u02B0\u03A3".toSlice == "\u03B1\u02B0\u03C2"
 #guard toLowercase "\u02B0\u03A3".toSlice == "\u02B0\u03C3"
 
