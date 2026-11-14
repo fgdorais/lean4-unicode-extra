@@ -76,17 +76,20 @@ private def isStarterOrAbove (c : Char) : Bool :=
 private def isFinalSigma (s : String.Slice) (p : s.Pos) (h : p ≠ s.endPos) : Bool :=
   before && !after
 where
+  -- Some characters are both cased and case-ignorable, such as U+0345 COMBINING GREEK
+  -- YPOGEGRAMMENI and modifier letters such as U+02B0. The Standard's regular expressions for
+  -- Final_Sigma are ambiguous for these: matched with backtracking, such a character can count as
+  -- the cased character. Like ICU and CPython, we skip every case-ignorable character first and
+  -- only then look for a cased one, so these characters never count as cased here.
   /-- Preceded by a cased character and then zero or more case-ignorable characters. -/
   before := Id.run do
     for c in (s.sliceTo p).revChars do
-      if isCased c then return true
-      if !isCaseIgnorable c then return false
+      if !isCaseIgnorable c then return isCased c
     return false
   /-- Followed by zero or more case-ignorable characters and then a cased character. -/
   after := Id.run do
     for c in (s.sliceFrom (p.next h)).chars do
-      if isCased c then return true
-      if !isCaseIgnorable c then return false
+      if !isCaseIgnorable c then return isCased c
     return false
 
 /-- Casing context `After_Soft_Dotted` for the character at `p` -/
@@ -179,6 +182,10 @@ public def toUppercase (s : String.Slice) (lang : CasingLanguage := .default) : 
       | .turkish, 'i' | .azeri, 'i' => out.push '\u0130'
       | _, _ => pushUpper out c
   return out
+
+-- TODO: `toTitlecase(X)` from the Default Case Algorithms. It titlecases the first cased
+-- character after each word boundary and lowercases the rest of the word, so it needs the word
+-- boundaries of UAX #29, which UnicodeExtra does not have yet.
 
 /-- Full case folding of a string
 
