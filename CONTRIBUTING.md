@@ -12,6 +12,7 @@ Please open an issue before starting on a larger change, such as a new feature o
 
 ```sh
 lake build --wfail                   # warnings are errors
+lake test                            # run the tests
 ```
 
 CI runs the same commands on every pull request, and they must pass with no warnings. The Lean version is set in `lean-toolchain` and is updated automatically, so please don't change it in a pull request.
