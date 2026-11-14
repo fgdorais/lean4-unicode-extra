@@ -24,3 +24,17 @@ jobs:
           build: true
           build-args: "--wfail"
           test: true
+
+      - name: build-util
+        working-directory: util
+        run: lake --wfail build
+
+      - name: check-tables
+        working-directory: util
+        run: |
+          lake exe MakeTables
+          git diff --exit-code
+
+      - name: test-segmentation
+        working-directory: util
+        run: lake exe TestSegmentation

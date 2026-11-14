@@ -6,3 +6,4 @@ module
 
 public import UnicodeExtra.Basic
 public import UnicodeExtra.Casing
+public import UnicodeExtra.Grapheme
