@@ -35,6 +35,10 @@ jobs:
           lake exe MakeTables
           git diff --exit-code
 
+      - name: test-tables
+        working-directory: util
+        run: lake exe TestTables
+
       - name: test-segmentation
         working-directory: util
         run: lake exe TestSegmentation

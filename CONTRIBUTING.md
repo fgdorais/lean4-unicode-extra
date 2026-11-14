@@ -19,7 +19,8 @@ The `util` directory has the tools that need the full Unicode Character Database
 
 ```sh
 cd util
-lake exe MakeTables                  # regenerate the data tables in UnicodeExtra
+lake exe MakeTables                  # regenerate the data tables in data/
+lake exe TestTables                  # check the character properties against the UCD
 lake exe TestSegmentation            # run the UCD conformance tests for segmentation
 ```
 
