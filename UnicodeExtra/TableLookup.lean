@@ -104,4 +104,38 @@ where
   str : String := include_str "../data/Soft_Dotted.txt"
   table : Thunk <| Array (UInt32 × UInt32) := parsePropTable str
 
+/-- Get sentence break property using lookup table
+
+  Unicode property: `Sentence_Break` -/
+public def lookupSentenceBreak (c : UInt32) : SentenceBreak :=
+  let table := table.get
+  if c < table[0]!.1 then .other else
+    match table[find c (fun i => table[i]!.1) 0 table.size.toUSize]! with
+    | (_, v, sb) =>
+      if c ≤ v then
+        match sb with
+        | some sb => sb
+        | none =>
+          -- the table does not tell `Upper` from `Lower`
+          let ch := Char.ofNat c.toNat
+          if isUppercase ch || GeneralCategory.isTitlecaseLetter ch then .upper else .lower
+      else .other
+where
+  str : String := include_str "../data/Sentence_Break.txt"
+  table : Thunk <| Array (UInt32 × UInt32 × Option SentenceBreak) :=
+    parseDataTable str fun _ _ x => if x[0]! == "lc" then none else some (SentenceBreak.ofAbbrev! x[0]!)
+
+/-- Get word break property using lookup table
+
+  Unicode property: `Word_Break` -/
+public def lookupWordBreak (c : UInt32) : WordBreak :=
+  let table := table.get
+  if c < table[0]!.1 then .other else
+    match table[find c (fun i => table[i]!.1) 0 table.size.toUSize]! with
+    | (_, v, wb) => if c ≤ v then wb else .other
+where
+  str : String := include_str "../data/Word_Break.txt"
+  table : Thunk <| Array (UInt32 × UInt32 × WordBreak) :=
+    parseDataTable str fun _ _ x => WordBreak.ofAbbrev! x[0]!
+
 end Unicode

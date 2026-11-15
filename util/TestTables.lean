@@ -66,4 +66,12 @@ def main : IO UInt32 := do
     if row[1]! == "Soft_Dotted" then some "Y" else none
   failures := failures + (← check "Soft_Dotted" t fun c =>
     if lookupSoftDotted c.val then "Y" else "N")
+  let sb ← readValueAliases "SB"
+  let t ← readValues ("auxiliary"/"SentenceBreakProperty.txt") "XX" fun row =>
+    sb.get? row[1]!.toString
+  failures := failures + (← check "Sentence_Break" t fun c => (getSentenceBreak c).toAbbrev)
+  let wb ← readValueAliases "WB"
+  let t ← readValues ("auxiliary"/"WordBreakProperty.txt") "XX" fun row =>
+    wb.get? row[1]!.toString
+  failures := failures + (← check "Word_Break" t fun c => (getWordBreak c).toAbbrev)
   return if failures == 0 then 0 else 1
