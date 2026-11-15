@@ -59,6 +59,27 @@ open Unicode
 #guard toCasefold "I\u0130".toSlice .turkish == "\u0131i"
 #guard toCasefold "I\u0130".toSlice == "ii\u0307"
 
+/-! Titlecasing -/
+
+#guard toTitlecase "hello wORLD".toSlice == "Hello World"
+#guard toTitlecase "don't stop".toSlice == "Don't Stop"
+#guard toTitlecase "3rd".toSlice == "3Rd"
+#guard toTitlecase "(hello)".toSlice == "(Hello)"
+#guard toTitlecase "\u01C6ungla".toSlice == "\u01C5ungla"
+#guard toTitlecase "\u01C4A".toSlice == "\u01C5a"
+#guard toTitlecase "stra\u00DFe \u00DFa".toSlice == "Stra\u00DFe Ssa"
+#guard toTitlecase "\uFB03x".toSlice == "Ffix"
+#guard toTitlecase "\u0149".toSlice == "\u02BCN"
+#guard toTitlecase "\u1FB3".toSlice == "\u1FBC"
+#guard toTitlecase "\u039F\u0394\u039F\u03A3 \u03A3".toSlice == "\u039F\u03B4\u03BF\u03C2 \u03A3"
+#guard toTitlecase "a\u03A3 b".toSlice == "A\u03C2 B"
+#guard toTitlecase "istanbul".toSlice .turkish == "\u0130stanbul"
+#guard toTitlecase "iIx II\u0307".toSlice .azeri == "\u0130\u0131x Ii"
+#guard toTitlecase "aI\u0307".toSlice .turkish == "Ai"
+#guard toTitlecase "a\u00CC".toSlice .lithuanian == "Ai\u0307\u0300"
+#guard toTitlecase "i\u0307x".toSlice .lithuanian == "I\u0307x"
+#guard toTitlecase "".toSlice == ""
+
 /-! Language tags -/
 
 #guard CasingLanguage.ofLanguageTag "lt".toSlice == .lithuanian
