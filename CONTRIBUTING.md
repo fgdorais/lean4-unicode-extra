@@ -15,6 +15,17 @@ lake build --wfail                   # warnings are errors
 lake test                            # run the tests
 ```
 
+The `util` directory has the tools that need the full Unicode Character Database, from UnicodeData:
+
+```sh
+cd util
+lake exe MakeTables                  # regenerate the data tables in data/
+lake exe TestTables                  # check the character properties against the UCD
+lake exe TestSegmentation            # run the UCD conformance tests for segmentation
+```
+
+Don't edit generated tables by hand; change `util/MakeTables.lean` and regenerate them.
+
 CI runs the same commands on every pull request, and they must pass with no warnings. The Lean version is set in `lean-toolchain` and is updated automatically, so please don't change it in a pull request.
 
 ## Dependencies
