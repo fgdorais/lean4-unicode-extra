@@ -6,6 +6,7 @@ module
 
 public import UnicodeBasic
 import UnicodeExtra.TableLookup
+import UnicodeExtra.Word
 
 /-!
 # Case Mapping of Strings
@@ -14,7 +15,7 @@ Full case mapping and case folding of whole strings, following the default case 
 "Default Case Algorithms" section of the Unicode Standard's core specification. Unlike the
 per-character mappings in `UnicodeBasic`, these apply the conditional mappings of
 `SpecialCasing.txt`: the language-independent final sigma rule, and the Lithuanian, Turkish and
-Azeri tailorings.
+Azeri tailorings. Titlecasing uses the default word boundaries of Unicode Standard Annex #29.
 -/
 
 namespace Unicode
@@ -118,9 +119,30 @@ private def isAfterI (s : String.Slice) (p : s.Pos) : Bool := Id.run do
 @[inline] private def pushUpper (out : String) (c : Char) : String :=
   withUppercasing c fun c l => l.foldl String.push (out.push c)
 
+/-- Append the full titlecase mapping of a character, without conditions -/
+@[inline] private def pushTitle (out : String) (c : Char) : String :=
+  withTitlecasing c fun c l => l.foldl String.push (out.push c)
+
 /-- Append the full case folding of a character, without conditions -/
 @[inline] private def pushCaseFolding (out : String) (c : Char) : String :=
   withCaseFolding c fun c l => l.foldl String.push (out.push c)
+
+/-- Append the full lowercase mapping of the character at `p`, with the conditional mappings of
+  `SpecialCasing.txt` for `lang` -/
+private def pushLowerAt (lang : CasingLanguage) (s : String.Slice) (p : s.Pos) (h : p ≠ s.endPos)
+    (out : String) : String :=
+  let c := p.get h
+  match lang, c with
+  | _, '\u03A3' => out.push (if isFinalSigma s p h then '\u03C2' else '\u03C3')
+  | .lithuanian, 'I' | .lithuanian, 'J' | .lithuanian, '\u012E' =>
+    if isMoreAbove s p h then (pushLower out c).push '\u0307' else pushLower out c
+  | .lithuanian, '\u00CC' => out ++ "i\u0307\u0300"
+  | .lithuanian, '\u00CD' => out ++ "i\u0307\u0301"
+  | .lithuanian, '\u0128' => out ++ "i\u0307\u0303"
+  | .turkish, '\u0130' | .azeri, '\u0130' => out.push 'i'
+  | .turkish, '\u0307' | .azeri, '\u0307' => if isAfterI s p then out else out.push c
+  | .turkish, 'I' | .azeri, 'I' => out.push (if isBeforeDot s p h then 'i' else '\u0131')
+  | _, _ => pushLower out c
 
 /-- Full lowercase mapping of a string
 
@@ -138,18 +160,7 @@ private def isAfterI (s : String.Slice) (p : s.Pos) : Bool := Id.run do
 public def toLowercase (s : String.Slice) (lang : CasingLanguage := .default) : String := Id.run do
   let mut out := ""
   for ⟨p, h⟩ in s.positions do
-    let c := p.get h
-    out := match lang, c with
-      | _, '\u03A3' => out.push (if isFinalSigma s p h then '\u03C2' else '\u03C3')
-      | .lithuanian, 'I' | .lithuanian, 'J' | .lithuanian, '\u012E' =>
-        if isMoreAbove s p h then (pushLower out c).push '\u0307' else pushLower out c
-      | .lithuanian, '\u00CC' => out ++ "i\u0307\u0300"
-      | .lithuanian, '\u00CD' => out ++ "i\u0307\u0301"
-      | .lithuanian, '\u0128' => out ++ "i\u0307\u0303"
-      | .turkish, '\u0130' | .azeri, '\u0130' => out.push 'i'
-      | .turkish, '\u0307' | .azeri, '\u0307' => if isAfterI s p then out else out.push c
-      | .turkish, 'I' | .azeri, 'I' => out.push (if isBeforeDot s p h then 'i' else '\u0131')
-      | _, _ => pushLower out c
+    out := pushLowerAt lang s p h out
   return out
 
 /-- Full uppercase mapping of a string
@@ -171,9 +182,43 @@ public def toUppercase (s : String.Slice) (lang : CasingLanguage := .default) : 
       | _, _ => pushUpper out c
   return out
 
--- TODO: `toTitlecase(X)` from the Default Case Algorithms. It titlecases the first cased
--- character after each word boundary and lowercases the rest of the word, so it needs the word
--- boundaries of UAX #29, which UnicodeExtra does not have yet.
+/-- Full titlecase mapping of a string
+
+  Splits the string at its word boundaries. In each word, the first cased character is mapped to
+  its full titlecase mapping and the characters after it are mapped to their full lowercase
+  mappings, while the characters before it are unchanged. The conditional mappings of
+  `SpecialCasing.txt` apply as in `toLowercase`. For example, `"ǆungla ΟΔΟΣ"` maps to
+  `"ǅungla Οδος"`, `"don't"` maps to `"Don't"` and `"3rd"` maps to `"3Rd"`, and with `.turkish`,
+  `"istanbul"` maps to `"İstanbul"`.
+
+  This is `toTitlecase(X)` in the Default Case Algorithms of the Unicode Standard, with the default
+  word boundaries of Unicode Standard Annex #29, *Unicode Text Segmentation*.
+
+  Unicode properties: `Titlecase_Mapping`, `Lowercase_Mapping`, `Cased`, `Case_Ignorable`,
+  `Soft_Dotted`, `Canonical_Combining_Class`, `Word_Break` -/
+public def toTitlecase (s : String.Slice) (lang : CasingLanguage := .default) : String := Id.run do
+  -- ICU differs by default: it titlecases the first letter, number or symbol of each word, cased
+  -- or not, so it maps `"3rd"` to `"3rd"`. The Standard takes the first cased character.
+  let brk := Word.boundaries (Word.scan s).2
+  let mut out := ""
+  let mut i := 0
+  let mut titled := false
+  for ⟨p, h⟩ in s.positions do
+    let c := p.get h
+    if brk[i]! then titled := false
+    i := i + 1
+    if titled then
+      out := pushLowerAt lang s p h out
+    else if isCased c then
+      titled := true
+      -- The only other conditional titlecase mapping in `SpecialCasing.txt`, for U+0307 in
+      -- Lithuanian, never applies here: U+0307 is not cased.
+      out := match lang, c with
+        | .turkish, 'i' | .azeri, 'i' => out.push '\u0130'
+        | _, _ => pushTitle out c
+    else
+      out := out.push c
+  return out
 
 /-- Full case folding of a string
 
