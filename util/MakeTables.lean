@@ -83,6 +83,23 @@ def mkIndicConjunctBreak : IO (Array (UInt32 × UInt32 × String)) := do
 def mkSoftDotted : IO (Array (UInt32 × UInt32)) :=
   compressProp <$> readBinaryProp "PropList.txt" "Soft_Dotted"
 
+/-- `Upper` and `Lower` are both stored as `lc`: the library tells them apart with UnicodeBasic's
+  `isUppercase` and `isTitlecaseLetter`, which this checks. -/
+def mkSentenceBreak : IO (Array (UInt32 × UInt32 × String)) := do
+  let t ← readEnumProp ("auxiliary"/"SentenceBreakProperty.txt") "SB"
+  for (c₀, c₁, v) in t do
+    if v == "UP" || v == "LO" then
+      for c in [c₀.toNat:c₁.toNat+1] do
+        let ch := Char.ofNat c
+        if (v == "UP") != (isUppercase ch || GeneralCategory.isTitlecaseLetter ch) then
+          throw <| .userError s!"Sentence_Break={v} of U+{toHexStringRaw c.toUInt32} \
+            disagrees with isUppercase and isTitlecaseLetter"
+  return compressData <| t.map fun (c₀, c₁, v) =>
+    (c₀, c₁, if v == "UP" || v == "LO" then "lc" else v)
+
+def mkWordBreak : IO (Array (UInt32 × UInt32 × String)) :=
+  compressData <$> readEnumProp ("auxiliary"/"WordBreakProperty.txt") "WB"
+
 /-- Write a range table: `start;stop;value`, with an empty `stop` for a single code point -/
 def writeData (name : String) (table : Array (UInt32 × UInt32 × String)) : IO Unit := do
   IO.println s!"Generating table {name}"
@@ -128,14 +145,18 @@ def main (args : List String) : IO UInt32 := do
     "Extended_Pictographic",
     "Grapheme_Cluster_Break",
     "Indic_Conjunct_Break",
-    "Soft_Dotted"]
+    "Sentence_Break",
+    "Soft_Dotted",
+    "Word_Break"]
   IO.FS.createDirAll (".."/"data")
   for arg in args do
     match arg with
     | "Extended_Pictographic" => writeProp arg (← mkExtendedPictographic)
     | "Grapheme_Cluster_Break" => writeData arg (← mkGraphemeClusterBreak)
     | "Indic_Conjunct_Break" => writeData arg (← mkIndicConjunctBreak)
+    | "Sentence_Break" => writeData arg (← mkSentenceBreak)
     | "Soft_Dotted" => writeProp arg (← mkSoftDotted)
+    | "Word_Break" => writeData arg (← mkWordBreak)
     | _ =>
       IO.eprintln s!"Unknown table {arg}"
       return 1

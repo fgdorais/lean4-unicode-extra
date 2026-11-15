@@ -41,10 +41,12 @@ def splitAll (s : String) : List String := Id.run do
 def showSegs (l : List String) : String :=
   " ÷ ".intercalate <| l.map fun s => " ".intercalate (s.toList.map fun c => toHexStringRaw c.val)
 
-def testGrapheme : IO Nat := do
+/-- Run a segmentation test file against a segmentation function -/
+def runTests (file : System.FilePath) (segment : String → List String)
+    (check : String → List String → Option (List String) := fun _ _ => none) : IO Nat := do
   let mut failures := 0
   let mut count := 0
-  for line in ← IO.FS.lines (ucdDir/"auxiliary"/"GraphemeBreakTest.txt") do
+  for line in ← IO.FS.lines (ucdDir/"auxiliary"/file) do
     let (test, cmt) := match line.splitOn "#" with
       | t :: c => (t.trimAscii.toString, "#".intercalate c)
       | [] => ("", "")
@@ -52,17 +54,24 @@ def testGrapheme : IO Nat := do
     count := count + 1
     let expected := parseTestLine test
     let s := String.join expected
-    let got := (graphemeClusters s.toSlice).toList.map (·.toString)
-    let split := splitAll s
-    if got != expected || split != expected then
+    let got := segment s
+    let other := check s expected
+    if got != expected || other.isSome then
       failures := failures + 1
       IO.println s!"FAIL {test}"
       IO.println s!"  got   {showSegs got}"
-      if split != got then IO.println s!"  split {showSegs split}"
+      if let some o := other then IO.println s!"  other {showSegs o}"
       IO.println s!"  {cmt.trimAscii}"
-  IO.println s!"GraphemeBreakTest.txt: {count - failures}/{count} passed"
+  IO.println s!"{file}: {count - failures}/{count} passed"
   return failures
 
 def main : IO UInt32 := do
-  let failures ← testGrapheme
+  let mut failures := 0
+  failures := failures + (← runTests "GraphemeBreakTest.txt"
+    (fun s => (graphemeClusters s.toSlice).toList.map (·.toString))
+    (fun s expected => let l := splitAll s; if l == expected then none else some l))
+  failures := failures + (← runTests "WordBreakTest.txt"
+    (fun s => (wordSegments s.toSlice).toList.map (·.toString)))
+  failures := failures + (← runTests "SentenceBreakTest.txt"
+    (fun s => (sentenceSegments s.toSlice).toList.map (·.toString)))
   return if failures == 0 then 0 else 1
