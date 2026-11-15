@@ -26,8 +26,8 @@ public def getWordBreak (c : Char) : WordBreak := lookupWordBreak c.val
 
 namespace Word
 
-/-- Word break properties of a character -/
-private structure Props where
+/-- Word break properties of a character (internal use only) -/
+public structure Props where
   /-- Word break property -/
   wb : WordBreak
   /-- Extended pictographic property -/
@@ -54,8 +54,8 @@ private def isMidNumLetQ : WordBreak → Bool
   | .midNumLet | .singleQuote => true
   | _ => false
 
-/-- Word break properties of the characters of a string and their positions -/
-private def scan (s : String.Slice) : Array s.Pos × Array Props := Id.run do
+/-- Word break properties of the characters of a string and their positions (internal use only) -/
+public def scan (s : String.Slice) : Array s.Pos × Array Props := Id.run do
   let mut pos := #[]
   let mut data : Array Props := #[]
   for ⟨p, h⟩ in s.positions do
@@ -67,11 +67,11 @@ private def scan (s : String.Slice) : Array s.Pos × Array Props := Id.run do
     data := data.push { wb, pict := afterZWJ && isExtendedPictographic c }
   return (pos, data)
 
-/-- Check for word boundaries before each character after the first
+/-- Check for word boundaries before each character after the first (internal use only)
 
   Returns an array whose entry `i` is true if there is a word boundary before character `i`.
   Entry `0` is always true. -/
-private def boundaries (data : Array Props) : Array Bool := Id.run do
+public def boundaries (data : Array Props) : Array Bool := Id.run do
   let n := data.size
   let wb (i : Nat) : WordBreak := (data[i]?.map (·.wb)).getD .other
   -- `eff[i]`: the character that character `i` attaches to under WB4
