@@ -14,4 +14,4 @@ name = "UnicodeExtraTest"
 [[require]]
 name = "UnicodeBasic"
 git = "https://github.com/fgdorais/lean4-unicode-basic"
-rev = "nightly-testing"
+rev = "main"
