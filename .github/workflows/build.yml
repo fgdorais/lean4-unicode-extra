@@ -39,6 +39,10 @@ jobs:
         working-directory: util
         run: lake exe TestTables
 
+      - name: test-normalization
+        working-directory: util
+        run: lake exe TestNormalization
+
       - name: test-segmentation
         working-directory: util
         run: lake exe TestSegmentation
