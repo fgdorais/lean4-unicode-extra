@@ -18,7 +18,8 @@ namespace Unicode
 
 /-- Binary search -/
 @[specialize]
-private def find (c : UInt32) (t : USize → UInt32) (lo hi : USize) : USize :=
+private def find [LT α] [DecidableRel (α := α) (· < ·)] (c : α) (t : USize → α)
+    (lo hi : USize) : USize :=
   let mid := (lo + hi) / 2
   if lo < mid ∧ mid < hi then
     if c < t mid then
@@ -140,5 +141,57 @@ where
   str : String := include_str "../data/Word_Break.txt"
   table : Thunk <| Array (UInt32 × UInt32 × WordBreak) :=
     parseDataTable str fun _ _ x => WordBreak.ofAbbrev! x[0]!
+
+/-- Get NFC quick check property using lookup table
+
+  Unicode property: `NFC_Quick_Check` -/
+public def lookupNFCQuickCheck (c : UInt32) : QuickCheck :=
+  let table := table.get
+  if c < table[0]!.1 then .yes else
+    match table[find c (fun i => table[i]!.1) 0 table.size.toUSize]! with
+    | (_, v, qc) => if c ≤ v then qc else .yes
+where
+  str : String := include_str "../data/NFC_Quick_Check.txt"
+  table : Thunk <| Array (UInt32 × UInt32 × QuickCheck) :=
+    parseDataTable str fun _ _ x => QuickCheck.ofAbbrev! x[0]!
+
+/-- Get NFKC quick check property using lookup table
+
+  Unicode property: `NFKC_Quick_Check` -/
+public def lookupNFKCQuickCheck (c : UInt32) : QuickCheck :=
+  let table := table.get
+  if c < table[0]!.1 then .yes else
+    match table[find c (fun i => table[i]!.1) 0 table.size.toUSize]! with
+    | (_, v, qc) => if c ≤ v then qc else .yes
+where
+  str : String := include_str "../data/NFKC_Quick_Check.txt"
+  table : Thunk <| Array (UInt32 × UInt32 × QuickCheck) :=
+    parseDataTable str fun _ _ x => QuickCheck.ofAbbrev! x[0]!
+
+/-- Get the primary composite of two code points using lookup table
+
+  Returns `0` if there is none. Hangul syllables are not in the table.
+
+  Unicode properties:
+    `Decomposition_Mapping`
+    `Full_Composition_Exclusion` -/
+public def lookupPrimaryComposite (a b : UInt32) : UInt32 :=
+  let table := table.get
+  let k := key a b
+  if table.size = 0 || k < table[0]!.1 then 0 else
+    match table[find k (fun i => table[i]!.1) 0 table.size.toUSize]! with
+    | (k', c) => if k == k' then c else 0
+where
+  key (a b : UInt32) : UInt64 := a.toUInt64 <<< 21 ||| b.toUInt64
+  str : String := include_str "../data/Primary_Composite.txt"
+  /-- Primary composites, keyed by the two code points of their canonical decompositions -/
+  table : Thunk <| Array (UInt64 × UInt32) := .mk fun _ => Id.run do
+    let mut r := #[]
+    for (c₀, c₁) in (parsePropTable str).get do
+      for c in [c₀.toNat:c₁.toNat+1] do
+        match getDecompositionMapping? (Char.ofNat c) with
+        | some ⟨none, [a, b]⟩ => r := r.push (key a.val b.val, c.toUInt32)
+        | _ => continue
+    return r.qsort fun x y => x.1 < y.1
 
 end Unicode
