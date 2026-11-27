@@ -100,6 +100,27 @@ def mkSentenceBreak : IO (Array (UInt32 × UInt32 × String)) := do
 def mkWordBreak : IO (Array (UInt32 × UInt32 × String)) :=
   compressData <$> readEnumProp ("auxiliary"/"WordBreakProperty.txt") "WB"
 
+def mkNFCQuickCheck : IO (Array (UInt32 × UInt32 × String)) := do
+  compressData <$> readRanges "DerivedNormalizationProps.txt" fun row =>
+    if row[1]! == "NFC_QC" then some row[2]!.toString else none
+
+def mkNFKCQuickCheck : IO (Array (UInt32 × UInt32 × String)) := do
+  compressData <$> readRanges "DerivedNormalizationProps.txt" fun row =>
+    if row[1]! == "NFKC_QC" then some row[2]!.toString else none
+
+/-- Primary composites: characters with a canonical decomposition mapping that are not excluded
+  from composition. Hangul syllables are left out: they compose algorithmically. -/
+def mkPrimaryComposite : IO (Array (UInt32 × UInt32)) := do
+  let excl ← readBinaryProp "DerivedNormalizationProps.txt" "Full_Composition_Exclusion"
+  let isExcluded (c : UInt32) := excl.any fun (c₀, c₁) => c₀ ≤ c && c ≤ c₁
+  let mut out := #[]
+  for row in ← UCDStream.ofFile (ucdDir/"UnicodeData.txt") do
+    let m := row[5]!
+    if m.isEmpty || m.startsWith "<" then continue
+    let c := ofHexString! row[0]!
+    if !isExcluded c then out := out.push (c, c)
+  return compressProp out
+
 /-- Write a range table: `start;stop;value`, with an empty `stop` for a single code point -/
 def writeData (name : String) (table : Array (UInt32 × UInt32 × String)) : IO Unit := do
   IO.println s!"Generating table {name}"
@@ -139,12 +160,47 @@ def checkGraphemeProps : IO Unit := do
       unless ["XX", "EX", "ZWJ"].contains (gcbOf c.toUInt32) do
         throw <| .userError s!"Indic_Conjunct_Break U+{toHexStringRaw c.toUInt32} is not GCB=XX, EX or ZWJ"
 
+/-- Check the assumptions that `UnicodeExtra.Normalization` makes about decompositions and
+  primary composites -/
+def checkNormalizationProps : IO Unit := do
+  -- The library decomposes recursively at most `4` levels deep.
+  let rec depth : Nat → Char → Nat
+    | 0, _ => 0
+    | n + 1, c => match getDecompositionMapping? c with
+      | some d => 1 + (d.mapping.map (depth n)).foldl max 0
+      | none => 0
+  for c in [0:0x110000] do
+    if depth 8 (Char.ofNat c) > 4 then
+      throw <| .userError s!"decomposition of U+{toHexStringRaw c.toUInt32} is nested too deep"
+  let qc ← mkNFCQuickCheck
+  let isMaybe (c : UInt32) := qc.any fun (c₀, c₁, v) => c₀ ≤ c && c ≤ c₁ && v == "M"
+  for (c₀, c₁) in ← mkPrimaryComposite do
+    for c in [c₀.toNat:c₁.toNat+1] do
+      let ch := Char.ofNat c
+      unless getCanonicalCombiningClass ch == 0 do
+        throw <| .userError s!"primary composite U+{toHexStringRaw c.toUInt32} is not a starter"
+      match getDecompositionMapping? ch with
+      | some ⟨none, [_, b]⟩ =>
+        unless isMaybe b.val do
+          throw <| .userError s!"U+{toHexStringRaw b.val} combines with a preceding character \
+            but is not NFC_Quick_Check=M"
+      | _ => throw <| .userError s!"primary composite U+{toHexStringRaw c.toUInt32} does not \
+          have a canonical decomposition into two characters"
+  -- Hangul vowel and trailing consonant jamo combine with preceding syllables or jamo.
+  for c in List.range' 0x1161 21 ++ List.range' 0x11A8 27 do
+    unless isMaybe c.toUInt32 do
+      throw <| .userError s!"Hangul jamo U+{toHexStringRaw c.toUInt32} is not NFC_Quick_Check=M"
+
 def main (args : List String) : IO UInt32 := do
   checkGraphemeProps
+  checkNormalizationProps
   let args := if args != [] then args else [
     "Extended_Pictographic",
     "Grapheme_Cluster_Break",
     "Indic_Conjunct_Break",
+    "NFC_Quick_Check",
+    "NFKC_Quick_Check",
+    "Primary_Composite",
     "Sentence_Break",
     "Soft_Dotted",
     "Word_Break"]
@@ -154,6 +210,9 @@ def main (args : List String) : IO UInt32 := do
     | "Extended_Pictographic" => writeProp arg (← mkExtendedPictographic)
     | "Grapheme_Cluster_Break" => writeData arg (← mkGraphemeClusterBreak)
     | "Indic_Conjunct_Break" => writeData arg (← mkIndicConjunctBreak)
+    | "NFC_Quick_Check" => writeData arg (← mkNFCQuickCheck)
+    | "NFKC_Quick_Check" => writeData arg (← mkNFKCQuickCheck)
+    | "Primary_Composite" => writeProp arg (← mkPrimaryComposite)
     | "Sentence_Break" => writeData arg (← mkSentenceBreak)
     | "Soft_Dotted" => writeProp arg (← mkSoftDotted)
     | "Word_Break" => writeData arg (← mkWordBreak)

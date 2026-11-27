@@ -296,4 +296,54 @@ public def SentenceBreak.ofAbbrev! (abbr : String.Slice) : SentenceBreak :=
   | some x => x
   | Option.none => panic! "invalid sentence break alias"
 
+/-- Unicode normalization form
+
+  See Unicode Standard Annex #15, *Unicode Normalization Forms*. -/
+public inductive NormalizationForm where
+  /-- Canonical decomposition (`NFD`) -/
+  | nfd
+  /-- Canonical decomposition followed by canonical composition (`NFC`) -/
+  | nfc
+  /-- Compatibility decomposition (`NFKD`) -/
+  | nfkd
+  /-- Compatibility decomposition followed by canonical composition (`NFKC`) -/
+  | nfkc
+  deriving Inhabited, DecidableEq, Repr
+
+/-- Normalization quick check property value
+
+  Unicode properties:
+    `NFD_Quick_Check`
+    `NFC_Quick_Check`
+    `NFKD_Quick_Check`
+    `NFKC_Quick_Check` -/
+public inductive QuickCheck where
+  /-- The text is normalized (`Y`) -/
+  | yes
+  /-- The text is not normalized (`N`) -/
+  | no
+  /-- The text may or may not be normalized (`M`) -/
+  | maybe
+  deriving Inhabited, DecidableEq, Repr
+
+/-- Get the short alias of a quick check value -/
+public def QuickCheck.toAbbrev : QuickCheck → String
+  | .yes => "Y"
+  | .no => "N"
+  | .maybe => "M"
+
+/-- Get a quick check value from its short alias -/
+public def QuickCheck.ofAbbrev? (abbr : String.Slice) : Option QuickCheck :=
+  match abbr.toString with
+  | "Y" => some .yes
+  | "N" => some .no
+  | "M" => some .maybe
+  | _ => none
+
+@[inherit_doc QuickCheck.ofAbbrev?]
+public def QuickCheck.ofAbbrev! (abbr : String.Slice) : QuickCheck :=
+  match ofAbbrev? abbr with
+  | some x => x
+  | Option.none => panic! "invalid quick check alias"
+
 end Unicode

@@ -1,6 +1,6 @@
 name = "util"
 reservoir = false
-defaultTargets = ["MakeTables", "TestSegmentation", "TestTables"]
+defaultTargets = ["MakeTables", "TestNormalization", "TestSegmentation", "TestTables"]
 
 [[require]]
 name = "UnicodeData"
@@ -19,3 +19,6 @@ name = "TestSegmentation"
 
 [[lean_exe]]
 name = "TestTables"
+
+[[lean_exe]]
+name = "TestNormalization"

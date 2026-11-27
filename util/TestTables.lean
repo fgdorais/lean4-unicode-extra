@@ -74,4 +74,9 @@ def main : IO UInt32 := do
   let t ← readValues ("auxiliary"/"WordBreakProperty.txt") "XX" fun row =>
     wb.get? row[1]!.toString
   failures := failures + (← check "Word_Break" t fun c => (getWordBreak c).toAbbrev)
+  for (prop, form) in [("NFD_QC", NormalizationForm.nfd), ("NFC_QC", .nfc), ("NFKD_QC", .nfkd),
+      ("NFKC_QC", .nfkc)] do
+    let t ← readValues "DerivedNormalizationProps.txt" "Y" fun row =>
+      if row[1]! == prop then some row[2]!.toString else none
+    failures := failures + (← check prop t fun c => (quickCheck form (String.singleton c).toSlice).toAbbrev)
   return if failures == 0 then 0 else 1
