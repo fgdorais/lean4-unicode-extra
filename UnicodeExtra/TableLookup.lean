@@ -18,15 +18,18 @@ namespace Unicode
 
 /-- Binary search -/
 @[specialize]
-private partial def find [LT α] [DecidableRel (α := α) (· < ·)] (c : α) (t : USize → α)
+private def find [LT α] [DecidableRel (α := α) (· < ·)] (c : α) (t : USize → α)
     (lo hi : USize) : USize :=
   let mid := (lo + hi) / 2
-  if lo = mid then
-    lo
-  else if c < t mid then
-    find c t lo mid
+  if lo < mid ∧ mid < hi then
+    if c < t mid then
+      find c t lo mid
+    else
+      find c t mid hi
   else
-    find c t mid hi
+    lo
+termination_by hi.toNat - lo.toNat
+decreasing_by all_goals simp only [USize.lt_iff_toNat_lt] at *; lia
 
 /-- Parse a range compressed data table -/
 private def parseDataTable (s : String) (f : UInt32 → UInt32 → Array String.Slice → α) : Thunk <| Array (UInt32 × UInt32 × α) :=
