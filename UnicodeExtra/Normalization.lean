@@ -6,7 +6,7 @@ module
 
 public import UnicodeBasic
 public import UnicodeExtra.Types
-import UnicodeExtra.TableLookup
+public import UnicodeExtra.TableLookup
 
 /-!
 # Normalization
@@ -19,20 +19,20 @@ compatibility equivalent when they have the same NFKD (or NFKC).
 
 namespace Unicode
 
-/-- Check whether the form uses compatibility decompositions -/
-private def NormalizationForm.isCompat : NormalizationForm → Bool
+/-- Check whether the form uses compatibility decompositions (internal use only) -/
+@[expose] public def NormalizationForm.isCompat : NormalizationForm → Bool
   | .nfkd | .nfkc => true
   | _ => false
 
-/-- Check whether the form composes after decomposing -/
-private def NormalizationForm.isComposed : NormalizationForm → Bool
+/-- Check whether the form composes after decomposing (internal use only) -/
+@[expose] public def NormalizationForm.isComposed : NormalizationForm → Bool
   | .nfc | .nfkc => true
   | _ => false
 
 namespace Normalization
 
-/-- Quick check property of a character for a normalization form -/
-private def quickCheckChar : NormalizationForm → Char → QuickCheck
+/-- Quick check property of a character for a normalization form (internal use only) -/
+@[expose] public def quickCheckChar : NormalizationForm → Char → QuickCheck
   | .nfd, c =>
     match getDecompositionMapping? c with
     | some ⟨none, _⟩ => .no
@@ -46,8 +46,10 @@ private def quickCheckChar : NormalizationForm → Char → QuickCheck
   The position is the end of the string when the result is `.yes`. Otherwise, it is the last
   starter with quick check `Y` before the first character that does not have quick check `Y`, or
   the start of the string if there is no such starter. Normalizing the string from that position
-  on leaves the part before it unchanged. -/
-private def scan (form : NormalizationForm) (s : String.Slice) : QuickCheck × s.Pos :=
+  on leaves the part before it unchanged.
+
+  Internal use only. -/
+@[expose] public def scan (form : NormalizationForm) (s : String.Slice) : QuickCheck × s.Pos :=
   loop s.startPos 0 .yes s.startPos
 where
   /-- `last` is the combining class of the previous character, `res` the result so far, and
@@ -65,21 +67,25 @@ where
   decreasing_by all_goals grind [String.Slice.Pos.lt_iff_remainingBytes_lt, String.Slice.Pos.lt_next]
 
 /-- Append a character and its canonical combining class to `buf`, moving it before any
-  preceding nonstarters with a higher combining class (canonical ordering) -/
-private def pushOrdered (buf : Array (Char × Nat)) (c : Char) : Array (Char × Nat) :=
-  let cc := getCanonicalCombiningClass c
-  let n := buf.size
-  if cc == 0 then buf.push (c, 0) else loop (buf.push (c, cc)) n
+  preceding nonstarters with a higher combining class (canonical ordering)
+
+  Internal use only. -/
+@[expose] public def pushOrdered (buf : Array (Char × Nat)) (c : Char) : Array (Char × Nat) :=
+  loop buf (c, getCanonicalCombiningClass c)
 where
-  /-- Move the nonstarter at `i` before any preceding nonstarters of higher class -/
-  loop (buf : Array (Char × Nat)) : Nat → Array (Char × Nat)
-    | 0 => buf
-    | i + 1 =>
-      if buf[i]!.2 > buf[i+1]!.2 then loop (buf.swapIfInBounds i (i+1)) i else buf
+  /-- Insert a character with its combining class after the last character of `buf` that is a
+    starter or has a combining class at most its own -/
+  loop (buf : Array (Char × Nat)) (x : Char × Nat) : Array (Char × Nat) :=
+    if h : 0 < buf.size then
+      let y := buf[buf.size - 1]
+      if x.2 != 0 && x.2 < y.2 then (loop buf.pop x).push y else buf.push x
+    else buf.push x
+  termination_by buf.size
+  decreasing_by simp; lia
 
 /-- Append the full canonical (or compatibility) decomposition of a character to `buf`, in
-  canonical order -/
-private def pushDecomposition (compat : Bool) (buf : Array (Char × Nat)) (c : Char) :
+  canonical order (internal use only) -/
+@[expose] public def pushDecomposition (compat : Bool) (buf : Array (Char × Nat)) (c : Char) :
     Array (Char × Nat) :=
   -- Decomposition mappings nest at most 4 deep, as `util/MakeTables` checks.
   loop 4 buf c
@@ -91,8 +97,8 @@ where
       | none => pushOrdered buf c
     | 0, buf, c => pushOrdered buf c
 
-/-- Primary composite of two characters, including Hangul syllables -/
-private def composePair (a b : Char) : Option Char :=
+/-- Primary composite of two characters, including Hangul syllables (internal use only) -/
+@[expose] public def composePair (a b : Char) : Option Char :=
   -- Only characters with `NFC_Quick_Check=M` combine with a preceding character, as
   -- `util/MakeTables` checks.
   if lookupNFCQuickCheck b.val != .maybe then none else
@@ -108,8 +114,8 @@ private def composePair (a b : Char) : Option Char :=
     let c := lookupPrimaryComposite a b
     if c == 0 then none else some (Char.ofNat c.toNat)
 
-/-- Canonical composition of a string in canonical order -/
-private def compose (buf : Array (Char × Nat)) : String :=
+/-- Canonical composition of a string in canonical order (internal use only) -/
+@[expose] public def compose (buf : Array (Char × Nat)) : String :=
   (loop 0 #[] none 0).foldl String.push ""
 where
   /-- `starter` is the position of the last starter in `out`, and `last` the combining class of
@@ -132,9 +138,9 @@ where
         loop (i + 1) (out.push c) starter cc
     else out
 
-/-- Normalize a whole string -/
-private def normalizeAll (form : NormalizationForm) (s : String.Slice) : String :=
-  let buf := s.chars.fold (pushDecomposition form.isCompat) #[]
+/-- Normalize a whole string (internal use only) -/
+@[expose] public def normalizeAll (form : NormalizationForm) (s : String.Slice) : String :=
+  let buf := s.foldl (pushDecomposition form.isCompat) #[]
   if form.isComposed then compose buf else buf.foldl (fun s (c, _) => s.push c) ""
 
 end Normalization
@@ -147,13 +153,13 @@ open Normalization
   the quick check cannot tell. `.maybe` only occurs for `.nfc` and `.nfkc`.
 
   Specification: quick check, Unicode Standard Annex #15, *Unicode Normalization Forms*. -/
-public def quickCheck (form : NormalizationForm) (s : String.Slice) : QuickCheck :=
+@[expose] public def quickCheck (form : NormalizationForm) (s : String.Slice) : QuickCheck :=
   (scan form s).1
 
 /-- Check whether a string is in a normalization form
 
   Specification: Unicode Standard Annex #15, *Unicode Normalization Forms*. -/
-public def isNormalized (form : NormalizationForm) (s : String.Slice) : Bool :=
+@[expose] public def isNormalized (form : NormalizationForm) (s : String.Slice) : Bool :=
   match scan form s with
   | (.yes, _) => true
   | (.no, _) => false
@@ -162,7 +168,7 @@ public def isNormalized (form : NormalizationForm) (s : String.Slice) : Bool :=
 /-- Normalize a string to a normalization form
 
   Specification: Unicode Standard Annex #15, *Unicode Normalization Forms*. -/
-public def normalize (form : NormalizationForm) (s : String.Slice) : String :=
+@[expose] public def normalize (form : NormalizationForm) (s : String.Slice) : String :=
   match scan form s with
   | (.yes, _) => s.toString
   | (_, p) => (s.sliceTo p).toString ++ normalizeAll form (s.sliceFrom p)
